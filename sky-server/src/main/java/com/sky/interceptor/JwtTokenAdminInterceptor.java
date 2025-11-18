@@ -1,6 +1,7 @@
 package com.sky.interceptor;
 
 import com.sky.constant.JwtClaimsConstant;
+import com.sky.context.BaseContext;
 import com.sky.properties.JwtProperties;
 import com.sky.utils.JwtUtil;
 import io.jsonwebtoken.Claims;
@@ -44,13 +45,26 @@ public class JwtTokenAdminInterceptor implements HandlerInterceptor {
         //2、校验令牌
         try {
             log.info("jwt校验:{}", token);
+            
+            // 如果token为空，直接返回401
+            if (token == null || token.isEmpty()) {
+                log.warn("请求头中未找到token，请求头名称: {}", jwtProperties.getAdminTokenName());
+                response.setStatus(401);
+                return false;
+            }
+            
             Claims claims = JwtUtil.parseJWT(jwtProperties.getAdminSecretKey(), token);
             Long empId = Long.valueOf(claims.get(JwtClaimsConstant.EMP_ID).toString());
-            log.info("当前员工id：", empId);
+            log.info("当前员工id：{}", empId);
+
+            /* 将用户id存储到ThreadLocal */
+            BaseContext.setCurrentId(empId);
+
             //3、通过，放行
             return true;
         } catch (Exception ex) {
             //4、不通过，响应401状态码
+            log.error("jwt令牌解析失败: {}", ex.getMessage());
             response.setStatus(401);
             return false;
         }
