@@ -4,11 +4,14 @@
 <mapper namespace="com.sky.mapper.DishFlavorMapper">
     <insert id="insertBatch">
         insert into dish_flavor(dish_id,name,value) values
-        <foreach collection="list" item="dishFlavor" separator=",">
+        <foreach collection="flavors" item="dishFlavor" separator=",">
             (#{dishFlavor.dishId},#{dishFlavor.name},#{dishFlavor.value})
         </foreach>
     </insert>
     <delete id="deleteByDishId">
         delete from dish_flavor where dish_id = #{dishId}
     </delete>
+    <select id="getByDishId" resultType="com.sky.entity.DishFlavor">
+        select * from dish_flavor where dish_id = #{dishId}
+    </select>
 </mapper>

@@ -12,7 +12,9 @@ public interface DishFlavorMapper {
      * 批量插入口味数据
      * @param flavors
      */
-    void insertBatch(List<DishFlavor> flavors);
+    void insertBatch(@Param("flavors") List<DishFlavor> flavors);
 
     void deleteByDishId(Long id);
+
+    List<DishFlavor> getByDishId(Long id);
 }
