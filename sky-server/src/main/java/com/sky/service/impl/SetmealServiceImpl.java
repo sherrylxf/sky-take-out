@@ -3,11 +3,14 @@ package com.sky.service.impl;
 import com.github.pagehelper.Page;
 import com.github.pagehelper.PageHelper;
 import com.sky.constant.MessageConstant;
+import com.sky.constant.StatusConstant;
 import com.sky.dto.SetmealVO;
 import com.sky.dto.SetmealPageQueryDTO;
+import com.sky.entity.Dish;
 import com.sky.entity.Setmeal;
 import com.sky.entity.SetmealDish;
 import com.sky.exception.DeletionNotAllowedException;
+import com.sky.mapper.DishMapper;
 import com.sky.mapper.SetmealDishMapper;
 import com.sky.mapper.SetmealMapper;
 import com.sky.result.PageResult;
@@ -24,6 +27,8 @@ public class SetmealServiceImpl implements SetmealService {
     private SetmealMapper setmealMapper;
     @Autowired
     private SetmealDishMapper setmealDishMapper;
+    @Autowired
+    private DishMapper dishMapper;
 
     @Override
     public void save(SetmealVO setmealDTO) {
@@ -92,6 +97,29 @@ public class SetmealServiceImpl implements SetmealService {
             //3. 插入新的套餐和菜品的关联数据
             setmealDishMapper.insertBatch(setmealDishes);
         }
+    }
+
+    @Override
+    public void startOrStop(Integer status, Long id) {
+        // 若要起售套餐，检查菜品是否起售
+        if(status == StatusConstant.ENABLE){
+            List<Dish> dishList = dishMapper.getBySetmealId(id);
+            if(dishList != null && dishList.size() > 0){
+                for (Dish dish : dishList) {
+                    if(dish.getStatus() == StatusConstant.DISABLE){
+                        // 套餐内包含未启售的菜品，不能启售
+                        throw new RuntimeException(MessageConstant.SETMEAL_ENABLE_FAILED);
+                    }
+                }
+            }
+        }
+
+        // 更新套餐状态（起售或停售）
+        Setmeal setmeal = Setmeal.builder()
+                .id(id)
+                .status(status)
+                .build();
+        setmealMapper.update(setmeal);
     }
 
 

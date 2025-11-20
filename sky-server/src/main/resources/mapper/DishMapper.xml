@@ -74,4 +74,7 @@
         </where>
         order by create_time desc
     </select>
+    <select id="getBySetmealId" resultType="java.lang.Object">
+        select * from dish where id = #{setmealId}
+    </select>
 </mapper>
