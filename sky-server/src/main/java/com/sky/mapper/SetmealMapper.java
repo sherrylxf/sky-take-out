@@ -29,4 +29,10 @@ public interface SetmealMapper {
      * @param setmeal
      */
     void update(Setmeal setmeal);
+
+    /**
+     * 插入套餐数据
+     * @param setmeal
+     */
+    void insert(Setmeal setmeal);
 }
