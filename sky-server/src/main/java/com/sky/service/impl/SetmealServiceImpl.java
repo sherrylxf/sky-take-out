@@ -3,7 +3,7 @@ package com.sky.service.impl;
 import com.github.pagehelper.Page;
 import com.github.pagehelper.PageHelper;
 import com.sky.constant.MessageConstant;
-import com.sky.dto.SetmealDTO;
+import com.sky.dto.SetmealVO;
 import com.sky.dto.SetmealPageQueryDTO;
 import com.sky.entity.Setmeal;
 import com.sky.entity.SetmealDish;
@@ -12,7 +12,6 @@ import com.sky.mapper.SetmealDishMapper;
 import com.sky.mapper.SetmealMapper;
 import com.sky.result.PageResult;
 import com.sky.service.SetmealService;
-import com.sky.vo.SetmealVO;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -27,7 +26,7 @@ public class SetmealServiceImpl implements SetmealService {
     private SetmealDishMapper setmealDishMapper;
 
     @Override
-    public void save(SetmealDTO setmealDTO) {
+    public void save(SetmealVO setmealDTO) {
         Setmeal setmeal = new Setmeal();
         BeanUtils.copyProperties(setmealDTO, setmeal);
         setmealMapper.insert(setmeal);
@@ -47,7 +46,7 @@ public class SetmealServiceImpl implements SetmealService {
         int pageSize = setmealPageQueryDTO.getPageSize();
         PageHelper.startPage(page, pageSize);
 
-        Page<SetmealVO> setmealVOS = setmealMapper.pageQuery(setmealPageQueryDTO);
+        Page<com.sky.vo.SetmealVO> setmealVOS = setmealMapper.pageQuery(setmealPageQueryDTO);
         return new PageResult(setmealVOS.getTotal(), setmealVOS);
     }
 
@@ -68,4 +67,32 @@ public class SetmealServiceImpl implements SetmealService {
             setmealDishMapper.deleteBySetmealId(setmealid);
         });
     }
+
+    @Override
+    public SetmealVO getById(Long id) {
+        Setmeal setmeal = setmealMapper.getById(id);
+        List<SetmealDish> setmealDishList = setmealDishMapper.getBySetmealId(id);
+        SetmealVO setmealVO = new SetmealVO();
+        BeanUtils.copyProperties(setmeal, setmealVO);
+        setmealVO.setSetmealDishes(setmealDishList);
+        return setmealVO;
+    }
+
+    @Override
+    public void update(SetmealVO setmealVO) {
+        Setmeal setmeal = new Setmeal();
+        BeanUtils.copyProperties(setmealVO, setmeal);
+        //1. 修改套餐表
+        setmealMapper.update(setmeal);
+        //2. 删除套餐和菜品的关联数据
+        setmealDishMapper.deleteBySetmealId(setmealVO.getId());
+        List<SetmealDish> setmealDishes = setmealVO.getSetmealDishes();
+        if(setmealDishes != null && setmealDishes.size() > 0){
+            setmealDishes.forEach(setmealDish -> setmealDish.setSetmealId(setmealVO.getId()));
+            //3. 插入新的套餐和菜品的关联数据
+            setmealDishMapper.insertBatch(setmealDishes);
+        }
+    }
+
+
 }

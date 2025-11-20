@@ -8,7 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Data
-public class SetmealDTO implements Serializable {
+public class SetmealVO implements Serializable {
 
     private Long id;
 

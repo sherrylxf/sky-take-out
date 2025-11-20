@@ -1,6 +1,6 @@
 package com.sky.controller.admin;
 
-import com.sky.dto.SetmealDTO;
+import com.sky.dto.SetmealVO;
 import com.sky.dto.SetmealPageQueryDTO;
 import com.sky.result.PageResult;
 import com.sky.result.Result;
@@ -28,7 +28,7 @@ public class SetmealController {
      */
     @PostMapping
     @ApiOperation("新增套餐")
-    public Result save(@RequestBody SetmealDTO setmealDTO) {
+    public Result save(@RequestBody SetmealVO setmealDTO) {
         log.info("新增套餐：{}", setmealDTO);
         setmealService.save(setmealDTO);
         return Result.success();
@@ -47,6 +47,11 @@ public class SetmealController {
         return Result.success(pageResult);
     }
 
+    /**
+     * 批量删除套餐
+     * @param ids
+     * @return
+     */
     @DeleteMapping
     @ApiOperation("删除套餐")
     public Result delete(@RequestParam List<Long> ids) {
@@ -54,4 +59,26 @@ public class SetmealController {
         setmealService.delete(ids);
         return Result.success();
     }
+
+    /**
+     * 根据id查询套餐
+     * @param id
+     * @return
+     */
+    @GetMapping("/{id}")
+    @ApiOperation("根据id查询套餐")
+    public Result<SetmealVO> getById(@PathVariable Long id) {
+        log.info("根据id查询套餐：{}", id);
+        SetmealVO setmealVO = setmealService.getById(id);
+        return Result.success(setmealVO);
+    }
+
+    @PutMapping
+    @ApiOperation("修改套餐")
+    public Result update(@RequestBody SetmealVO setmealVO) {
+        log.info("修改套餐：{}", setmealVO);
+        setmealService.update(setmealVO);
+        return Result.success();
+    }
+
 }
