@@ -12,4 +12,6 @@ import java.util.List;
 @Mapper
 public interface SetmealDishMapper {
     void insertBatch(@Param("setmealDishes") List<SetmealDish> setmealDishes);
+
+    void deleteBySetmealId(Long setmealid);
 }

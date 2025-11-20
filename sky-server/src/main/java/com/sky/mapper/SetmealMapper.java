@@ -8,6 +8,7 @@ import com.sky.enumeration.OperationType;
 import com.sky.result.PageResult;
 import com.sky.vo.SetmealVO;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
 import java.util.List;
@@ -50,4 +51,12 @@ public interface SetmealMapper {
      * @return
      */
     Page<SetmealVO> pageQuery(SetmealPageQueryDTO setmealPageQueryDTO);
+
+    /**
+     * 根据id查询套餐
+     * @param id
+     */
+    Setmeal getById(@Param("id") Long id);
+
+    void delete(Long setmealid);
 }

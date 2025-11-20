@@ -40,6 +40,9 @@
         </set>
         where id = #{id}
     </update>
+    <delete id="delete">
+        delete from setmeal where id = #{id}
+    </delete>
     <select id="pageQuery" resultType="com.sky.vo.SetmealVO">
         select s.*,c.name as categoryName
         from setmeal s
@@ -62,5 +65,8 @@
         <foreach collection="ids" item="dishId" separator="," open="(" close=")">
             #{dishId}
         </foreach>
+    </select>
+    <select id="getById" resultType="com.sky.entity.Setmeal">
+        select * from setmeal where id = #{id}
     </select>
 </mapper>
