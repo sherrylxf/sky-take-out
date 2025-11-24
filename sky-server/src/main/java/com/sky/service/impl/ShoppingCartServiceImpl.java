@@ -61,6 +61,8 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
             }
             shoppingCart.setNumber(1);
             shoppingCart.setCreateTime(LocalDateTime.now());
+            // 确保设置用户ID
+            shoppingCart.setUserId(BaseContext.getCurrentId());
             shoppingCartMapper.insert(shoppingCart);
         }
 

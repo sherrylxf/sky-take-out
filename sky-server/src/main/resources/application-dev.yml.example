@@ -7,10 +7,22 @@ sky:
     username: your_username
     password: your_password
 
+  redis:
+    host: localhost
+    port: 6379
+    # 如果 Redis 有密码，取消下面的注释并设置密码
+    # password: your_redis_password
+    database: 10
+
   alioss:
     endpoint: oss-cn-shanghai.aliyuncs.com
     access-key-id: your_access_key_id
     access-key-secret: your_access_key_secret
     bucket-name: your_bucket_name
+
+  wechat:
+    appid: your_wechat_appid
+    secret: your_wechat_secret
+
 
 

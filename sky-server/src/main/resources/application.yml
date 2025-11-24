@@ -1,5 +1,5 @@
 server:
-  port: 8081
+  port: 8080
 
 spring:
   profiles:
@@ -15,8 +15,9 @@ spring:
   redis:
     host: ${sky.redis.host}
     port: ${sky.redis.port}
-    password: ${sky.redis.password}
     database: ${sky.redis.database}
+    # 如果 Redis 有密码，在 application-dev.yml 中配置 sky.redis.password，然后取消下面的注释
+    # password: ${sky.redis.password}
 
 mybatis:
   #mapper配置文件
@@ -42,7 +43,7 @@ sky:
     admin-ttl: 7200000
     # 设置前端传递过来的令牌名称
     admin-token-name: token
-    user-token-name: itheima
+    user-token-name: authentication
     user-ttl: 7200000
     user-secret-key: authentication
 
