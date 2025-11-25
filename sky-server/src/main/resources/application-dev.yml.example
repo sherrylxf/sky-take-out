@@ -23,6 +23,14 @@ sky:
   wechat:
     appid: your_wechat_appid
     secret: your_wechat_secret
+    mock: true # 默认可设为 true 进行支付模拟，正式环境请改为 false
+    mchid: your_mchid
+    mch-serial-no: your_mch_serial
+    private-key-file-path: D:/cert/apiclient_key.pem
+    api-v3-key: your_api_v3_key
+    we-chat-pay-cert-file-path: D:/cert/wechatpay_cert.pem
+    notify-url: https://your.domain.com/notify/paySuccess
+    refund-notify-url: https://your.domain.com/notify/refundSuccess
 
 
 

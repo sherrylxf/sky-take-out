@@ -1,7 +1,6 @@
 package com.sky.properties;
 
 import lombok.Data;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
@@ -19,5 +18,6 @@ public class WeChatProperties {
     private String weChatPayCertFilePath; //平台证书
     private String notifyUrl; //支付成功的回调地址
     private String refundNotifyUrl; //退款成功的回调地址
+    private Boolean mock; // 是否开启支付模拟
 
 }

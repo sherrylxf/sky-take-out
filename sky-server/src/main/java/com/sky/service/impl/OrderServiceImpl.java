@@ -1,6 +1,6 @@
 package com.sky.service.impl;
 
-import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.github.pagehelper.Page;
 import com.github.pagehelper.PageHelper;
@@ -25,16 +25,15 @@ import com.sky.mapper.ShoppingCartMapper;
 import com.sky.mapper.UserMapper;
 import com.sky.result.PageResult;
 import com.sky.service.OrderService;
-import com.sky.utils.HttpClientUtil;
 import com.sky.utils.WeChatPayUtil;
 import com.sky.vo.OrderPaymentVO;
 import com.sky.vo.OrderStatisticsVO;
 import com.sky.vo.OrderSubmitVO;
 import com.sky.vo.OrderVO;
+import com.sky.websocket.WebSocketServer;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
@@ -42,10 +41,10 @@ import org.springframework.util.CollectionUtils;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.HashMap;
 
 @Service
 @Slf4j
@@ -61,11 +60,9 @@ public class OrderServiceImpl implements OrderService {
     @Autowired
     private UserMapper userMapper;
     @Autowired
+    private WebSocketServer webSocketServer;
+    @Autowired
     private WeChatPayUtil weChatPayUtil;
-    @Value("${sky.shop.address}")
-    private String shopAddress;
-    @Value("${sky.baidu.ak}")
-    private String ak;
 
     @Transactional
     @Override
@@ -84,9 +81,6 @@ public class OrderServiceImpl implements OrderService {
         if(shoppingCartList == null || shoppingCartList.size() == 0){
             throw new RuntimeException(MessageConstant.SHOPPING_CART_IS_NULL);
         }
-
-        // 检查收货地址是否超出配送范围
-        checkOutOfRange(addressBook.getDetail());
 
         // 构造订单数据
         Orders order = new Orders();
@@ -244,13 +238,19 @@ public class OrderServiceImpl implements OrderService {
         Long userId = BaseContext.getCurrentId();
         User user = userMapper.getById(userId);
 
-        //调用微信支付接口，生成预支付交易单
-        JSONObject jsonObject = weChatPayUtil.pay(
-                ordersPaymentDTO.getOrderNumber(), //商户订单号
-                new BigDecimal(0.01), //支付金额，单位 元（测试用0.01元）
-                "苍穹外卖订单", //商品描述
-                user.getOpenid() //微信用户的openid
-        );
+        JSONObject jsonObject;
+        try {
+            //调用微信支付接口，生成预支付交易单
+            jsonObject = weChatPayUtil.pay(
+                    ordersPaymentDTO.getOrderNumber(), //商户订单号
+                    new BigDecimal(0.01), //支付金额，单位 元（测试用0.01元）
+                    "苍穹外卖订单", //商品描述
+                    user.getOpenid() //微信用户的openid
+            );
+        } catch (RuntimeException ex) {
+            log.error("微信支付配置异常：{}", ex.getMessage());
+            throw new OrderBusinessException(ex.getMessage());
+        }
 
         if (jsonObject.getString("code") != null && jsonObject.getString("code").equals("ORDERPAID")) {
             throw new OrderBusinessException("该订单已支付");
@@ -281,6 +281,13 @@ public class OrderServiceImpl implements OrderService {
                 .build();
 
         orderMapper.update(orders);
+
+        // 通过WebSocket向客户端推送消息
+        Map<String, Object> map = new HashMap<>();
+        map.put("type", 1);// 1表示来单提醒
+        map.put("orderId", ordersDB.getId());
+        map.put("content", "订单号" + outTradeNo);
+        webSocketServer.sendToAllClient(JSON.toJSONString(map));
     }
 
     /**
@@ -452,52 +459,4 @@ public class OrderServiceImpl implements OrderService {
         return String.join("", orderDishList);
     }
 
-    /**
-     * 检查客户的收货地址是否超出配送范围
-     * @param address 收货地址
-     */
-    private void checkOutOfRange(String address) {
-        Map<String, String> params = new HashMap<>();
-        params.put("address", shopAddress);
-        params.put("output", "json");
-        params.put("ak", ak);
-
-        String shopCoordinate = HttpClientUtil.doGet("https://api.map.baidu.com/geocoding/v3", params);
-        JSONObject jsonObject = JSONObject.parseObject(shopCoordinate);
-        if (!"0".equals(jsonObject.getString("status"))) {
-            throw new OrderBusinessException("店铺地址解析失败");
-        }
-        JSONObject location = jsonObject.getJSONObject("result").getJSONObject("location");
-        String shopLngLat = location.getString("lat") + "," + location.getString("lng");
-
-        Map<String, String> userParams = new HashMap<>();
-        userParams.put("address", address);
-        userParams.put("output", "json");
-        userParams.put("ak", ak);
-        String userCoordinate = HttpClientUtil.doGet("https://api.map.baidu.com/geocoding/v3", userParams);
-        jsonObject = JSONObject.parseObject(userCoordinate);
-        if (!"0".equals(jsonObject.getString("status"))) {
-            throw new OrderBusinessException("收货地址解析失败");
-        }
-        location = jsonObject.getJSONObject("result").getJSONObject("location");
-        String userLngLat = location.getString("lat") + "," + location.getString("lng");
-
-        Map<String, String> routeParams = new HashMap<>();
-        routeParams.put("origin", shopLngLat);
-        routeParams.put("destination", userLngLat);
-        routeParams.put("steps_info", "0");
-        routeParams.put("ak", ak);
-        routeParams.put("output", "json");
-
-        String routeJson = HttpClientUtil.doGet("https://api.map.baidu.com/directionlite/v1/driving", routeParams);
-        jsonObject = JSONObject.parseObject(routeJson);
-        if (!"0".equals(jsonObject.getString("status"))) {
-            throw new OrderBusinessException("配送路线规划失败");
-        }
-        JSONArray routes = jsonObject.getJSONObject("result").getJSONArray("routes");
-        Integer distance = routes.getJSONObject(0).getInteger("distance");
-        if (distance != null && distance > 5000) {
-            throw new OrderBusinessException("超出配送范围");
-        }
-    }
 }

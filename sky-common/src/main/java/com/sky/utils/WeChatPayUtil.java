@@ -16,6 +16,7 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.util.EntityUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -50,12 +51,23 @@ public class WeChatPayUtil {
      * @return
      */
     private CloseableHttpClient getClient() {
-        PrivateKey merchantPrivateKey = null;
         try {
+            validateCertConfig();
+            if (Boolean.TRUE.equals(weChatProperties.getMock())) {
+                throw new RuntimeException("模拟支付模式下不应请求微信支付");
+            }
+            File privateKeyFile = new File(weChatProperties.getPrivateKeyFilePath());
+            File certFile = new File(weChatProperties.getWeChatPayCertFilePath());
+            if (!privateKeyFile.exists()) {
+                throw new RuntimeException("微信支付私钥文件不存在：" + privateKeyFile.getAbsolutePath());
+            }
+            if (!certFile.exists()) {
+                throw new RuntimeException("微信支付平台证书文件不存在：" + certFile.getAbsolutePath());
+            }
             //merchantPrivateKey商户API私钥，如何加载商户API私钥请看常见问题
-            merchantPrivateKey = PemUtil.loadPrivateKey(new FileInputStream(new File(weChatProperties.getPrivateKeyFilePath())));
+            PrivateKey merchantPrivateKey = PemUtil.loadPrivateKey(new FileInputStream(privateKeyFile));
             //加载平台证书文件
-            X509Certificate x509Certificate = PemUtil.loadCertificate(new FileInputStream(new File(weChatProperties.getWeChatPayCertFilePath())));
+            X509Certificate x509Certificate = PemUtil.loadCertificate(new FileInputStream(certFile));
             //wechatPayCertificates微信支付平台证书列表。你也可以使用后面章节提到的“定时更新平台证书功能”，而不需要关心平台证书的来龙去脉
             List<X509Certificate> wechatPayCertificates = Arrays.asList(x509Certificate);
 
@@ -67,8 +79,23 @@ public class WeChatPayUtil {
             CloseableHttpClient httpClient = builder.build();
             return httpClient;
         } catch (FileNotFoundException e) {
-            e.printStackTrace();
-            return null;
+            throw new RuntimeException("微信支付证书文件读取失败：" + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 校验证书相关配置是否完整
+     */
+    private void validateCertConfig() {
+        if (Boolean.TRUE.equals(weChatProperties.getMock())) {
+            return;
+        }
+        if (!StringUtils.hasText(weChatProperties.getPrivateKeyFilePath())
+                || !StringUtils.hasText(weChatProperties.getWeChatPayCertFilePath())
+                || !StringUtils.hasText(weChatProperties.getMchid())
+                || !StringUtils.hasText(weChatProperties.getMchSerialNo())
+                || !StringUtils.hasText(weChatProperties.getApiV3Key())) {
+            throw new RuntimeException("微信支付证书未配置，请完善 application-dev.yml 中的 sky.wechat.* 参数");
         }
     }
 
@@ -104,6 +131,7 @@ public class WeChatPayUtil {
      * @param url
      * @return
      */
+    @SuppressWarnings("unused")
     private String get(String url) throws Exception {
         CloseableHttpClient httpClient = getClient();
 
@@ -164,6 +192,15 @@ public class WeChatPayUtil {
      * @return
      */
     public JSONObject pay(String orderNum, BigDecimal total, String description, String openid) throws Exception {
+        if (Boolean.TRUE.equals(weChatProperties.getMock())) {
+            JSONObject jo = new JSONObject();
+            jo.put("timeStamp", String.valueOf(System.currentTimeMillis() / 1000));
+            jo.put("nonceStr", RandomStringUtils.randomNumeric(32));
+            jo.put("package", "prepay_id=MOCK_PREPAY_ID_" + orderNum);
+            jo.put("signType", "RSA");
+            jo.put("paySign", "MOCK_PAY_SIGN");
+            return jo;
+        }
         //统一下单，生成预支付交易单
         String bodyAsString = jsapi(orderNum, total, description, openid);
         //解析返回结果
@@ -215,6 +252,9 @@ public class WeChatPayUtil {
      * @return
      */
     public String refund(String outTradeNo, String outRefundNo, BigDecimal refund, BigDecimal total) throws Exception {
+        if (Boolean.TRUE.equals(weChatProperties.getMock())) {
+            return "MOCK_REFUND_SUCCESS";
+        }
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("out_trade_no", outTradeNo);
         jsonObject.put("out_refund_no", outRefundNo);
